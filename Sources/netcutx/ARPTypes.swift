@@ -38,6 +38,11 @@ func bytesToIP(_ bytes: [UInt8]) -> String? {
     return "\(bytes[0]).\(bytes[1]).\(bytes[2]).\(bytes[3])"
 }
 
+func randomMAC() -> MACAddr {
+    (0x02, UInt8.random(in: 0...255), UInt8.random(in: 0...255),
+     UInt8.random(in: 0...255), UInt8.random(in: 0...255), UInt8.random(in: 0...255))
+}
+
 func isAllZeroMAC(_ mac: MACAddr) -> Bool {
     mac.0 == 0 && mac.1 == 0 && mac.2 == 0 && mac.3 == 0 && mac.4 == 0 && mac.5 == 0
 }

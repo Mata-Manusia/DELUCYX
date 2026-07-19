@@ -16,40 +16,14 @@ enum ResolveError: Error, LocalizedError {
 
 func resolveMAC(bpf: NetcutxBPF, ourMAC: MACAddr, ourIP: String, targetIP: String) throws -> MACAddr {
     let req = ARPFrame.buildRequest(srcMAC: ourMAC, srcIP: ourIP, targetIP: targetIP)
-    print("  [debug] ARP req size: \(req.bytes.count) bytes")
-    print("  [debug] ARP req hex: \(req.bytes.map { String(format: "%02x", $0) }.joined())")
-
-    let sendOK = (try? bpf.send(frame: Data(req.bytes))) != nil
-    print("  [debug] send result: \(sendOK ? "OK" : "FAIL")")
+    try? bpf.send(frame: Data(req.bytes))
 
     let deadline = Date().addingTimeInterval(3)
-    var attempts = 0
     while Date() < deadline {
-        do {
-            guard let packet = try bpf.receive(timeout: 0.5) else {
-                attempts += 1
-                print("  [debug] recv attempt \(attempts): timeout (no data)")
-                continue
-            }
-            attempts += 1
-            print("  [debug] recv attempt \(attempts): got \(packet.data.count) bytes")
-            print("  [debug] recv hex: \(packet.data.map { String(format: "%02x", $0) }.prefix(60).joined())")
-
-            guard let frame = ARPFrame(from: packet.data) else {
-                print("  [debug] not a valid ARP frame")
-                continue
-            }
-            if frame.isReply {
-                print("  [debug] ARP reply: senderIP=\(frame.senderIP ?? "?"), senderMAC=\(frame.senderMAC.map(macToString) ?? "?")")
-            } else if frame.isRequest {
-                print("  [debug] ARP request (ignoring)")
-            }
-            if frame.isReply, let sip = frame.senderIP, sip == targetIP, let mac = frame.senderMAC {
-                return mac
-            }
-        } catch {
-            print("  [debug] recv error: \(error)")
-            continue
+        guard let packet = try? bpf.receive(timeout: 0.5) else { continue }
+        guard let frame = ARPFrame(from: packet.data) else { continue }
+        if frame.isReply, let sip = frame.senderIP, sip == targetIP, let mac = frame.senderMAC {
+            return mac
         }
     }
     throw ResolveError.timeout(targetIP)

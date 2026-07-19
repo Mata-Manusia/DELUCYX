@@ -7,6 +7,7 @@ func usage() {
     Usage:
       sudo netcutx                        Interactive mode
       sudo netcutx <victim-ip> [options]  CLI mode
+      sudo netcutx stealth                Stealth session (passive + recon + access)
       sudo netcutx install                Install as system daemon (auto-start)
       sudo netcutx uninstall              Remove system daemon
       sudo netcutx stop all               Stop active spoofing
@@ -57,6 +58,9 @@ func main() {
             return
         case "upgrade":
             upgradeDaemon()
+            return
+        case "stealth":
+            stealthSession()
             return
         case "--daemon":
             runDaemon()

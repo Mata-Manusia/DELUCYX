@@ -20,6 +20,7 @@ $(BIN): Sources/NetcutxBPF/NetcutxBPF.swift Sources/netcutx/*.swift build/netcut
 	swiftc Sources/NetcutxBPF/NetcutxBPF.swift Sources/netcutx/*.swift \
 		build/netcutx_bpf.o \
 		-I$(C_MODULE) -sdk $(SDK) \
+		-lsqlite3 \
 		-o $(BIN)
 
 # ── GUI app ──────────────────────────────────────────────────────

