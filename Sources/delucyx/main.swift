@@ -2,15 +2,19 @@ import Foundation
 
 func usage() {
     print("""
-    netcutx - LAN Access Control Tool
+    delucyx - LAN Access Control Tool
 
     Usage:
-      sudo netcutx                        Interactive mode
-      sudo netcutx <victim-ip> [options]  CLI mode
-      sudo netcutx install                Install as system daemon (auto-start)
-      sudo netcutx uninstall              Remove system daemon
-      sudo netcutx stop all               Stop active spoofing
-      sudo netcutx status                 Show daemon status
+      delucyx                             Interactive TUI (OpenTUI)
+      delucyx menu                        Legacy text menu
+      sudo delucyx <victim-ip> [options]  CLI mode
+      sudo delucyx install                Install as system daemon (auto-start)
+      sudo delucyx uninstall              Remove system daemon
+      sudo delucyx upgrade                Rebuild and hot-reload running daemon
+      sudo delucyx stop all               Stop spoofing (daemon held)
+      sudo delucyx hold                   Pause daemon auto-spoof
+      sudo delucyx resume                 Resume auto mode
+      sudo delucyx status                 Show daemon status
 
     Options:
       -i, --interface <name>  Network interface (default: auto)
@@ -22,10 +26,10 @@ func usage() {
       --help                  Show this help
 
     Examples:
-      sudo netcutx
-      sudo netcutx 192.168.1.100 -b -f
-      sudo netcutx install
-      sudo netcutx stop all
+      sudo delucyx
+      sudo delucyx 192.168.1.100 -b -f
+      sudo delucyx install
+      sudo delucyx stop all
     """)
 }
 
@@ -52,8 +56,20 @@ func main() {
             if args.count >= 3 && args[2] == "all" {
                 stopAll()
             } else {
-                print("Usage: netcutx stop all")
+                print("Usage: delucyx stop all")
             }
+            return
+        case "hold":
+            holdDaemon()
+            return
+        case "resume":
+            resumeDaemon()
+            return
+        case "tui":
+            launchTUI(fallbackToMenu: false)
+            return
+        case "menu":
+            interactiveMode()
             return
         case "upgrade":
             upgradeDaemon()
@@ -68,11 +84,95 @@ func main() {
 
     let positionalArgs = args.dropFirst().filter { !$0.hasPrefix("-") }
     if positionalArgs.isEmpty {
-        interactiveMode()
+        launchTUI(fallbackToMenu: true)
         return
     }
 
     cliMode()
+}
+
+// MARK: - TUI launcher
+
+func findBun() -> String? {
+    let env = ProcessInfo.processInfo.environment
+    if let explicit = env["DELUCYX_BUN"], FileManager.default.isExecutableFile(atPath: explicit) {
+        return explicit
+    }
+
+    var candidates: [String] = []
+    if let path = env["PATH"] {
+        candidates += path.split(separator: ":").map { "\($0)/bun" }
+    }
+    candidates += [
+        "\(NSHomeDirectory())/.bun/bin/bun",
+        "/opt/homebrew/bin/bun",
+        "/usr/local/bin/bun",
+        "/usr/bin/bun"
+    ]
+
+    return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+}
+
+func resolveTUIDir() -> String? {
+    var candidates: [String] = []
+    if let explicit = ProcessInfo.processInfo.environment["DELUCYX_TUI_DIR"] {
+        candidates.append(explicit)
+    }
+    let binaryDir = URL(fileURLWithPath: currentExecutablePath())
+        .deletingLastPathComponent().path
+    candidates += [
+        "\(binaryDir)/../tui",        // repo layout: build/delucyx → tui/
+        "\(binaryDir)/tui",
+        "\(NSHomeDirectory())/.delucyx/tui"
+    ]
+
+    for dir in candidates {
+        let entry = (dir as NSString).appendingPathComponent("index.ts")
+        if FileManager.default.fileExists(atPath: entry) {
+            return URL(fileURLWithPath: dir).standardizedFileURL.path
+        }
+    }
+    return nil
+}
+
+func launchTUI(fallbackToMenu: Bool) {
+    guard let tuiDir = resolveTUIDir(), let bun = findBun() else {
+        warn("TUI butuh Bun dan folder tui/ — belum tersedia")
+        status("Install: make tui-deps && make install-tui")
+        if fallbackToMenu {
+            warn("Pakai menu legacy dulu")
+            interactiveMode()
+        } else {
+            fail("Jalankan: make tui-deps && make install-tui")
+        }
+        return
+    }
+
+    let binaryPath = currentExecutablePath()
+    let entry = (tuiDir as NSString).appendingPathComponent("index.ts")
+
+    // Hand the terminal over to Bun with execv: an idle parent process would keep
+    // the foreground process group and break the TUI's terminal ownership.
+    setenv("DELUCYX_BIN", binaryPath, 1)
+    setenv("DELUCYX_TUI_DIR", tuiDir, 1)
+    if chdir(tuiDir) != 0 {
+        fail("Tidak bisa masuk ke \(tuiDir)")
+        return
+    }
+
+    var argv: [UnsafeMutablePointer<CChar>?] = [
+        strdup(bun),
+        strdup("run"),
+        strdup(entry),
+        nil
+    ]
+    defer { for arg in argv where arg != nil { free(arg) } }
+
+    _ = argv.withUnsafeMutableBufferPointer { buffer in
+        execv(bun, buffer.baseAddress)
+    }
+
+    fail("Tidak bisa menjalankan TUI di \(bun): \(String(cString: strerror(errno)))")
 }
 
 func interactiveMode() {
@@ -99,9 +199,9 @@ func interactiveMode() {
     }
     ok("Gateway \(gw)")
 
-    let bpf: NetcutxBPF
+    let bpf: DelucyxBPF
     do {
-        bpf = try NetcutxBPF(interface: ifname)
+        bpf = try DelucyxBPF(interface: ifname)
     } catch {
         fail("Buka BPF gagal: \(error.localizedDescription)")
         warn("Jalankan dengan sudo")
@@ -322,9 +422,9 @@ func cliMode() {
         print("Victim: \(victim)")
     }
 
-    let bpf: NetcutxBPF
+    let bpf: DelucyxBPF
     do {
-        bpf = try NetcutxBPF(interface: ifname)
+        bpf = try DelucyxBPF(interface: ifname)
     } catch {
         print("Error opening BPF: \(error.localizedDescription)")
         print("Try running with sudo")

@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "netcutx",
+    name: "delucyx",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "NetcutxBPF", targets: ["NetcutxBPF"]),
+        .library(name: "DelucyxBPF", targets: ["DelucyxBPF"]),
     ],
     targets: [
         .target(
-            name: "NetcutxBPF_C",
+            name: "DelucyxBPF_C",
             dependencies: [],
             linkerSettings: []
         ),
         .target(
-            name: "NetcutxBPF",
-            dependencies: ["NetcutxBPF_C"]
+            name: "DelucyxBPF",
+            dependencies: ["DelucyxBPF_C"]
         ),
     ]
 )

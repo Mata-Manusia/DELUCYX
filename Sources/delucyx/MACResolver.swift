@@ -14,7 +14,7 @@ enum ResolveError: Error, LocalizedError {
     }
 }
 
-func resolveMAC(bpf: NetcutxBPF, ourMAC: MACAddr, ourIP: String, targetIP: String) throws -> MACAddr {
+func resolveMAC(bpf: DelucyxBPF, ourMAC: MACAddr, ourIP: String, targetIP: String) throws -> MACAddr {
     let req = ARPFrame.buildRequest(srcMAC: ourMAC, srcIP: ourIP, targetIP: targetIP)
     print("  [debug] ARP req size: \(req.bytes.count) bytes")
     print("  [debug] ARP req hex: \(req.bytes.map { String(format: "%02x", $0) }.joined())")

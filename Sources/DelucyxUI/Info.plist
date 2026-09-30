@@ -4,13 +4,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>NetcutxUI</string>
+    <string>DelucyxUI</string>
     <key>CFBundleIdentifier</key>
-    <string>com.netcutx.ui</string>
+    <string>com.delucyx.ui</string>
     <key>CFBundleName</key>
-    <string>NetcutxUI</string>
+    <string>DelucyxUI</string>
     <key>CFBundleDisplayName</key>
-    <string>netcutx</string>
+    <string>delucyx</string>
     <key>CFBundleVersion</key>
     <string>1.0.0</string>
     <key>CFBundleShortVersionString</key>

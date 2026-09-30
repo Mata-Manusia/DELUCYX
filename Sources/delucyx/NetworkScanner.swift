@@ -4,7 +4,7 @@ struct ScanResult {
     let devices: [DeviceInfo]
 }
 
-func scanNetwork(bpf: NetcutxBPF, ourMAC: MACAddr, ourIP: String, gatewayIP: String, ifname: String? = nil, deep: Bool = false) throws -> ScanResult {
+func scanNetwork(bpf: DelucyxBPF, ourMAC: MACAddr, ourIP: String, gatewayIP: String, ifname: String? = nil, deep: Bool = false) throws -> ScanResult {
     let netmask = ifname.flatMap { getInterfaceNetmask($0) } ?? "255.255.255.0"
     let prefix = getCIDRPrefix(netmask)
     let networkAddr = getNetworkAddress(ourIP, netmask) ?? ""
@@ -114,7 +114,6 @@ func quickScanARPTable(gatewayIP: String, ourIP: String) -> [DeviceInfo] {
         guard parts.count >= 4 else { continue }
 
         var ip = ""
-        var mac = ""
 
         if trimmed.contains("(") {
             if let ipStart = trimmed.firstIndex(of: "("),
@@ -125,11 +124,15 @@ func quickScanARPTable(gatewayIP: String, ourIP: String) -> [DeviceInfo] {
             ip = parts[1]
         }
 
-        let macPart = parts.first { $0.contains(":") && $0.count == 17 }
-        if let m = macPart { mac = m }
+        // `arp -a` prints octets unpadded ("d8:9a:d:5b:1e:e4"), so a fixed-width token check
+        // would silently drop those hosts; normalize through the shared parser instead.
+        guard let unicast = parts.first(where: { $0.contains(":") }).flatMap(stringToMAC),
+              unicast.0 & 0x01 == 0 else { continue }   // ignore group/multicast MACs
+        // The cache also holds multicast rows (mDNS 224.0.0.251); only unicast LAN hosts count.
+        guard let octets = ipToBytes(ip), (1...223).contains(octets[0]) else { continue }
 
-        guard ip != "", mac != "", !seen.contains(ip) else { continue }
-        guard !isSelfIP(ip, ourIP) else { continue }
+        let mac = macToString(unicast)
+        guard !seen.contains(ip), !isSelfIP(ip, ourIP) else { continue }
 
         seen.insert(ip)
         devices.append(DeviceInfo(

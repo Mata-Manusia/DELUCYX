@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-private let socketPath = "/var/run/netcutx.sock"
+private let socketPath = "/var/run/delucyx.sock"
 
 struct DaemonStatus {
     var running: Bool
@@ -53,10 +53,17 @@ class IPCClient {
 
         _ = msg.withCString { write(fd, $0, strlen($0)) }
 
-        var buf = [UInt8](repeating: 0, count: 4096)
-        let n = read(fd, &buf, 4095)
-        guard n > 0,
-              let json = try? JSONSerialization.jsonObject(with: Data(buf[0..<n])) as? [String: Any]
+        var buf = [UInt8](repeating: 0, count: 65536)
+        var total = 0
+        // The payload grows with the device and neighbour lists, so read until the newline.
+        while total < buf.count - 1 {
+            let n = read(fd, &buf[total], buf.count - 1 - total)
+            if n <= 0 { break }
+            total += n
+            if buf[total - 1] == UInt8(ascii: "\n") { break }
+        }
+        guard total > 0,
+              let json = try? JSONSerialization.jsonObject(with: Data(buf[0..<total])) as? [String: Any]
         else { return nil }
 
         return json

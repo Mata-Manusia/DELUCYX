@@ -1,4 +1,0 @@
-module NetcutxBPF_C {
-    umbrella header "netcutx_bpf.h"
-    export *
-}

@@ -28,8 +28,8 @@ struct DeviceInfo {
 func showBanner() {
     print("")
     print(c(.cyan, "  ╔══════════════════════════════════╗"))
-    print(c(.cyan, "  ║ ") + c(.bold, "   n e t c u t x") + "            " + c(.cyan, "║"))
-    print(c(.cyan, "  ║ ") + c(.dim, "   LAN Access Control Tool") + "  " + c(.cyan, "║"))
+    print(c(.cyan, "  ║ ") + c(.bold, "   d e l u c y x") + String(repeating: " ", count: 17) + c(.cyan, "║"))
+    print(c(.cyan, "  ║ ") + c(.dim, "   LAN Access Control Tool") + String(repeating: " ", count: 7) + c(.cyan, "║"))
     print(c(.cyan, "  ╚══════════════════════════════════╝"))
     print("")
 }

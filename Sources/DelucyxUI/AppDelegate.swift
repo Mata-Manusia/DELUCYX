@@ -30,7 +30,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
 
         // ── Header ──────────────────────────────────────────────
-        addLabel(menu, "netcutx v1.0.0", bold: true)
+        addLabel(menu, "delucyx v1.0.0", bold: true)
         menu.addItem(.separator())
 
         // ── Status ───────────────────────────────────────────────
@@ -60,7 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem.button?.title = s.running ? "🛡" : (s.manualStop ? "🟡" : "⚫")
         } else {
             addLabel(menu, "🔴 Daemon not running")
-            addLabel(menu, "Run: sudo netcutx install", small: true)
+            addLabel(menu, "Run: sudo delucyx install", small: true)
             statusItem.button?.title = "⚠️"
         }
 
@@ -121,6 +121,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openLog() {
-        NSWorkspace.shared.open(URL(fileURLWithPath: "/var/log/netcutx.log"))
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/var/log/delucyx.log"))
     }
 }

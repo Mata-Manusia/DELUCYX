@@ -1,5 +1,5 @@
 import Foundation
-import NetcutxBPF_C
+import DelucyxBPF_C
 
 public enum BPFError: LocalizedError {
     case openFailed(String)
@@ -27,14 +27,22 @@ public struct BPFPacket {
     }
 }
 
-public final class NetcutxBPF {
+public final class DelucyxBPF {
     private var ctx: OpaquePointer?
+
+    /// Frames handed to the kernel since launch (all BPF clients, one process).
+    private static var framesSentCounter: Int64 = 0
+
+    /// Total transmitted frames — sampled by the daemon for the dashboard charts.
+    public static var framesSent: Int64 {
+        OSAtomicAdd64(0, &framesSentCounter)
+    }
 
     public var isOpen: Bool { ctx != nil }
 
     public init(interface: String) throws {
-        guard let c = interface.withCString({ netcutx_bpf_open($0) }) else {
-            let err = String(cString: netcutx_bpf_error(nil))
+        guard let c = interface.withCString({ delucyx_bpf_open($0) }) else {
+            let err = String(cString: delucyx_bpf_error(nil))
             throw BPFError.openFailed(err)
         }
         ctx = c
@@ -49,11 +57,12 @@ public final class NetcutxBPF {
         let count = frame.count
         let result = frame.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> ssize_t in
             guard let base = ptr.baseAddress else { return -1 }
-            return netcutx_bpf_send(ctx, base.assumingMemoryBound(to: UInt8.self), count)
+            return delucyx_bpf_send(ctx, base.assumingMemoryBound(to: UInt8.self), count)
         }
         if result == -1 {
-            throw BPFError.sendFailed(String(cString: netcutx_bpf_error(ctx)))
+            throw BPFError.sendFailed(String(cString: delucyx_bpf_error(ctx)))
         }
+        OSAtomicIncrement64(&DelucyxBPF.framesSentCounter)
     }
 
     public func receive(timeout: TimeInterval) throws -> BPFPacket? {
@@ -61,10 +70,10 @@ public final class NetcutxBPF {
         let timeoutMs = Int(timeout * 1000)
         var buf = [UInt8](repeating: 0, count: 65535)
         let n = buf.withUnsafeMutableBufferPointer { ptr in
-            netcutx_bpf_recv(ctx, ptr.baseAddress, ptr.count, Int32(timeoutMs))
+            delucyx_bpf_recv(ctx, ptr.baseAddress, ptr.count, Int32(timeoutMs))
         }
         if n == -1 {
-            throw BPFError.recvFailed(String(cString: netcutx_bpf_error(ctx)))
+            throw BPFError.recvFailed(String(cString: delucyx_bpf_error(ctx)))
         }
         if n == 0 { return nil }
         return BPFPacket(data: Data(bytes: buf, count: Int(n)), rawLength: Int(n))
@@ -72,7 +81,7 @@ public final class NetcutxBPF {
 
     public func close() {
         guard let ctx else { return }
-        netcutx_bpf_close(ctx)
+        delucyx_bpf_close(ctx)
         self.ctx = nil
     }
 }

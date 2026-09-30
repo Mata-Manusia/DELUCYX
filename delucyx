@@ -1,6 +1,6 @@
 #!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD="$DIR/build/netcutx"
+BUILD="$DIR/build/delucyx"
 
 if [ ! -f "$BUILD" ]; then
     echo "Build dulu..."

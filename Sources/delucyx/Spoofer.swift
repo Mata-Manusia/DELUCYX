@@ -34,7 +34,7 @@ struct SpooferConfig {
 }
 
 func startSpoofing(config: SpooferConfig) throws {
-    let bpf = try NetcutxBPF(interface: config.interface)
+    let bpf = try DelucyxBPF(interface: config.interface)
     defer { bpf.close() }
 
     setupSignal()
@@ -116,7 +116,7 @@ func startMassSpoofing(configs: [SpooferConfig]) throws {
     guard !configs.isEmpty else { return }
     let first = configs[0]
 
-    let bpf = try NetcutxBPF(interface: first.interface)
+    let bpf = try DelucyxBPF(interface: first.interface)
     defer { bpf.close() }
 
     setupSignal()
@@ -202,7 +202,7 @@ func startMassSpoofing(configs: [SpooferConfig]) throws {
     }
 }
 
-func sendRestore(bpf: NetcutxBPF, config: SpooferConfig) {
+func sendRestore(bpf: DelucyxBPF, config: SpooferConfig) {
     for _ in 0..<3 {
         try? bpf.send(frame: Data(ARPFrame.buildReply(
             srcMAC: config.gatewayMAC, srcIP: config.gatewayIP,
